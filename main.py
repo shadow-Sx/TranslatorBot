@@ -4,6 +4,10 @@ import os
 from processor.pdf_processor import process_pdf
 from processor.fonts import handle_font_update
 
+# Papkalarni yaratish
+os.makedirs("temp", exist_ok=True)
+os.makedirs("fonts", exist_ok=True)
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -25,7 +29,10 @@ def handle_docs(message):
     # ZIP → shrift yuklash
     if doc.file_name.endswith(".zip"):
         file_path = f"temp/{doc.file_name}"
-        downloaded = bot.download_file(bot.get_file(doc.file_id).file_path)
+
+        file_info = bot.get_file(doc.file_id)
+        downloaded = bot.download_file(file_info.file_path)
+
         with open(file_path, "wb") as f:
             f.write(downloaded)
 
@@ -43,13 +50,19 @@ def handle_docs(message):
         input_path = f"temp/{doc.file_name}"
         output_path = f"temp/output_{doc.file_name}"
 
-        downloaded = bot.download_file(bot.get_file(doc.file_id).file_path)
+        file_info = bot.get_file(doc.file_id)
+        downloaded = bot.download_file(file_info.file_path)
+
         with open(input_path, "wb") as f:
             f.write(downloaded)
 
         bot.reply_to(message, "PDF qayta ishlanmoqda, kuting...")
 
-        process_pdf(input_path, output_path)
+        try:
+            process_pdf(input_path, output_path)
+        except Exception as e:
+            bot.reply_to(message, f"Xatolik yuz berdi:\n{e}")
+            return
 
         bot.send_document(message.chat.id, open(output_path, "rb"))
         return
@@ -57,4 +70,4 @@ def handle_docs(message):
     bot.reply_to(message, "Faqat PDF yoki ZIP yuboring.")
     
 
-bot.infinity_polling()
+bot.infinity_polling(skip_pending=True)
